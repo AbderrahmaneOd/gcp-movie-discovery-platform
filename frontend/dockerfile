@@ -34,7 +34,9 @@ FROM node:${NODE_VERSION} AS builder
 
 # Set build-time environment variable for API URL
 ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+ARG SERVER_API_URL
+ENV SERVER_API_URL=$SERVER_API_URL
 
 # Set working directory
 WORKDIR /app
@@ -67,7 +69,7 @@ FROM node:${NODE_VERSION} AS runner
 WORKDIR /app
 
 # Set production environment variables
-ENV NODE_ENV=production
+ENV NODE_ENV=dev
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 

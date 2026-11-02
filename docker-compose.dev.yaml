@@ -63,7 +63,13 @@ services:
       - pubsub-emulator
 
   frontend:
-    image: movie-match:frontend-v1.2
+    #image: movie-match:frontend-v1.5
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5000
+        SERVER_API_URL: http://backend:8081
     container_name: frontend
     restart: unless-stopped
     ports:
@@ -71,7 +77,7 @@ services:
     environment:
       PORT: 3000
       HOSTNAME: "0.0.0.0"
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      SERVER_API_URL: http://backend:8081
     depends_on:
       - backend
 

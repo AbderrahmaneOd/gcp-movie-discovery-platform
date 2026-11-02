@@ -9,8 +9,17 @@ import type {
   SearchResponse,
 } from "@/types/movie";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// export const API_BASE = "http://backend:8081";
+
+// export const API_BASE =
+//   typeof window === "undefined"
+//     ? process.env.SERVER_API_URL ?? "http://backend:8081"
+//     : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+  
+export const API_BASE =
+  typeof window === "undefined"
+    ? process.env.SERVER_API_URL!
+    : process.env.NEXT_PUBLIC_API_URL!;
 
 class ApiError extends Error {
   status: number;
@@ -53,12 +62,13 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+        cache: "no-store",
+            headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;

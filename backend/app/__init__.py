@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask
 from flask_cors import CORS
 
@@ -19,6 +21,12 @@ import app.models  # noqa: F401  ensure models are registered with SQLAlchemy me
 def create_app(config_object=None):
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    logging.getLogger().setLevel(logging.INFO)
 
     db.init_app(app)
 

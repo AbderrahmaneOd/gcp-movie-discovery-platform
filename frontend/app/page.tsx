@@ -1,6 +1,6 @@
 import { Header } from "@/components/Header";
 import { MovieGrid } from "@/components/MovieGrid";
-import { getPopularMovies } from "@/lib/api";
+import { getPopularMovies, API_BASE } from "@/lib/api";
 import type { Movie } from "@/types/movie";
 
 export const metadata = {
@@ -29,6 +29,8 @@ export default async function HomePage() {
           <p className="mt-3 max-w-2xl text-zinc-400">
             Discover what is trending right now. Search any title from the
             header to find more.
+
+            API called from: {API_BASE}
           </p>
         </section>
 
@@ -37,7 +39,7 @@ export default async function HomePage() {
             <p className="font-semibold">Could not load movies</p>
             <p className="mt-1 text-red-300/80">{error}</p>
             <p className="mt-2 text-red-300/60">
-              Make sure the backend is running on port 5000.
+              Make sure the backend is running on {process.env.SERVER_API_URL}.
             </p>
           </div>
         ) : (
