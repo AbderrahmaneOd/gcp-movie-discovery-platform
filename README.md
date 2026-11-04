@@ -1,149 +1,99 @@
-# Create "events" topic:
-curl -X PUT "http://localhost:8085/v1/projects/my-local-project/topics/events"
+# Movie Match
 
-# Create subscription named "events-sub" in the "events" topic 
-curl -X PUT "http://localhost:8085/v1/projects/my-local-project/subscriptions/events-sub" \
-     -H "Content-Type: application/json" \
-     -d '{"topic": "projects/my-local-project/topics/events"}'
+A movie discovery and recommendation platform built with Flask and Next.js, deployed on Google Cloud Platform.
 
-# List (Pull) the events arriving in the topic
-curl -X POST "http://localhost:8085/v1/projects/my-local-project/subscriptions/events-sub:pull" \
-     -H "Content-Type: application/json" \
-     -d '{"maxMessages": 10, "returnImmediately": true}'
+## Architecture
 
+### Backend
+- **Framework**: Flask (Python 3.13)
+- **Database**: PostgreSQL 17
+- **Cache**: Redis
+- **Event Streaming**: Google Cloud Pub/Sub
+- **Analytics**: BigQuery
+- **External API**: TMDB (The Movie Database)
 
+### Frontend
+- **Framework**: Next.js 16 (React 19)
+- **Styling**: Tailwind CSS 4
+- **UI Components**: Radix UI, shadcn
 
-The emulator will respond with a JSON array of receivedMessages. Because Pub/Sub data payload strings are always Base64 encoded, they will look like scrambled text.
+### Infrastructure
+- **Container Registry**: Google Artifact Registry
+- **Compute**: Cloud Run (serverless containers)
+- **Database**: Cloud SQL (PostgreSQL)
+- **Cache**: Cloud Memorystore (Redis)
+- **Networking**: VPC with custom subnet
+- **CI/CD**: GitHub Actions
 
+## Local Development
 
-echo "SGVsbG8=" | base64 --decode
-# Output: Hello
+### Prerequisites
+- Docker and Docker Compose
+- Python 3.13+
+- Node.js 24+
+- TMDB API Key
 
+### Environment Setup
 
-# Test emulator localy
+1. **Backend environment variables** (`backend/.env`):
+```env
+DATABASE_URL=postgresql+psycopg://myuser:MovieMatch1234@localhost:5432/MovieMatch
+REDIS_HOST=localhost
+REDIS_PORT=6379
+TMDB_API_KEY=your_tmdb_api_key
+SECRET_KEY=dev-secret
+GCP_PROJECT_ID=my-local-project
+TOPIC_ID=events
+PUBSUB_EMULATOR_HOST=localhost:8085
+```
 
-echo -n '{"event":"movie_favourites","user_id":"123","movie_id":"456"}' | base64
+2. **Frontend environment variables** (`frontend/.env.local`):
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+SERVER_API_URL=http://localhost:5000
+```
 
-Suppose this gives:
+### Run with Docker Compose
 
-eyJldmVudCI6Im1vdmllX2Zhdm91cml0ZXMiLCJ1c2VyX2lkIjoiMTIzIiwibW92aWVfaWQiOiI0NTYifQ==
+```bash
+docker-compose -f docker-compose.dev.yaml up
+```
 
-curl -X POST \
-  "http://localhost:8085/v1/projects/my-local-project/topics/events:publish" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {
-        "data": "eyJldmVudCI6Im1vdmllX2Zhdm91cml0ZXMiLCJ1c2VyX2lkIjoiMTIzIiwibW92aWVfaWQiOiI0NTYifQ=="
-      }
-    ]
-  }'
+Services:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+- Pub/Sub Emulator: localhost:8085
 
+### Run Locally (without Docker)
 
-# Connect to local DB
-psql -U myuser -W MovieMatch1234 -d MovieMatch
-
-# Show tables
-SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public';
-
-
-# Backend dev lanching
+**Backend:**
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 python run.py
+```
 
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-# GCP gcoud cli usefull commands
-First, make sure you're using the intended GCP project:
-gcloud config get-value project
+### Database Setup
 
-If necessary:
-gcloud config set project YOUR_PROJECT_ID
+Connect to PostgreSQL:
+```bash
+psql -U myuser -d MovieMatch -W
+# Password: MovieMatch1234
+```
 
-In my case: YOUR_PROJECT_ID=movie-match-d665d
-
-# Create the repository
-gcloud artifacts repositories create movie-app \
-  --repository-format=docker \
-  --location=europe-west9
-
-Verify it
-gcloud artifacts repositories list
-
-Configure Docker to use the gcloud credential helper:
-gcloud auth configure-docker europe-west9-docker.pkg.dev
-
-# Build the image and tag it
-docker build -t europe-west9-docker.pkg.dev/movie-match-d665d/movie-app/movie-backend:v1.1 .
-
-# Push the image to Google Artifact Registry (GAR)
-docker push europe-west9-docker.pkg.dev/movie-match-d665d/movie-app/movie-backend:v1.1
-
-
-gcloud artifacts docker images list \
-  europe-west9-docker.pkg.dev/movie-match-d665d/movie-app
-
-
-# Create Cloud run for backend
-gcloud run deploy movie-backend \
-  --image europe-west9-docker.pkg.dev/movie-match-d665d/movie-app/movie-backend:latest \
-  --region europe-west9 \
-  --env-vars-file backend/env.prod.yaml \
-  --allow-unauthenticated
-
-# Create Cloud SQL - PostgreSQL
-gcloud sql instances create movie-postgres \
-  --database-version=POSTGRES_17 \
-  --edition=ENTERPRISE \
-  --tier=db-f1-micro \
-  --region=europe-west9
-
-
-gcloud sql users create movieapp \
-  --instance=movie-postgres \
-  --password=MovieMatch1234
-
-gcloud sql databases create movie_match \
-  --instance=movie-postgres
-
-# Create VPC
-gcloud compute networks create movie-vpc \
-  --subnet-mode=custom
-
-# Subnet
-gcloud compute networks subnets create movie-subnet \
-  --network=movie-vpc \
-  --region=europe-west9 \
-  --range=10.10.0.0/24
-
-movie-vpc
-└── movie-subnet
-    ├── region: europe-west9
-    └── CIDR: 10.10.0.0/24
-
-# Create redis
-gcloud redis instances create movie-redis \
-  --size=1 \
-  --region=europe-west9 \
-  --network=movie-vpc
-
-
-# Update Cloud Run to allow Cloud SQL connection
-gcloud run services update movie-backend \
-  --region=europe-west9 \
-  --network=movie-vpc \
-  --subnet=movie-subnet \
-  --vpc-egress=private-ranges-only \
-  --add-cloudsql-instances=movie-match-d665d:europe-west9:movie-postgres
-
-
-gcloud projects add-iam-policy-binding movie-match-d665 \
-  --member="serviceAccount:690419851764-compute@developer.gserviceaccount.com" \
-  --role="roles/cloudsql.client"
-
-
-# DB Connection String
-postgresql+psycopg://movieapp:MovieMatch1234@/movie_match?host=/cloudsql/movie-match-d665d:europe-west9:movie-postgres
-
-# DB creating
+Create favorites table:
+```sql
 CREATE TABLE favorites (
     id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     session_id VARCHAR(128) NOT NULL,
@@ -154,69 +104,354 @@ CREATE TABLE favorites (
     vote_average DOUBLE PRECISION,
     year INTEGER,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT uq_favorites_session_movie
-        UNIQUE (session_id, movie_id)
+    CONSTRAINT uq_favorites_session_movie UNIQUE (session_id, movie_id)
 );
 
-CREATE INDEX ix_favorites_session_id
-    ON favorites (session_id);
+CREATE INDEX ix_favorites_session_id ON favorites (session_id);
+```
 
+### Test Pub/Sub Emulator
 
-# Enable pub/sub and Bigquerry
+Create topic and subscription:
+```bash
+curl -X PUT "http://localhost:8085/v1/projects/my-local-project/topics/events"
+
+curl -X PUT "http://localhost:8085/v1/projects/my-local-project/subscriptions/events-sub" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "projects/my-local-project/topics/events"}'
+```
+
+Publish a test message:
+```bash
+echo -n '{"event_type":"movie_favourites","session_id":"123","movie_id":456}' | base64
+# Copy the base64 output
+
+curl -X POST "http://localhost:8085/v1/projects/my-local-project/topics/events:publish" \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"data": "BASE64_OUTPUT_HERE"}]}'
+```
+
+Pull messages:
+```bash
+curl -X POST "http://localhost:8085/v1/projects/my-local-project/subscriptions/events-sub:pull" \
+  -H "Content-Type: application/json" \
+  -d '{"maxMessages": 10, "returnImmediately": true}'
+```
+
+Decode base64 payload:
+```bash
+echo "SGVsbG8=" | base64 --decode
+```
+
+## Google Cloud Platform Deployment
+
+### Environment Variables
+
+Set these variables for your deployment:
+
+```bash
+export PROJECT_ID="movie-match-d665d"
+export REGION="europe-west9"
+export REPOSITORY="movie-app"
+export SQL_INSTANCE="movie-postgres"
+export REDIS_INSTANCE="movie-redis"
+export VPC_NAME="movie-vpc"
+export SUBNET_NAME="movie-subnet"
+export SUBNET_RANGE="10.10.0.0/24"
+export DATASET="movie_app_analytics"
+export TABLE="user_events"
+export TOPIC="user-events-topic"
+export SUBSCRIPTION="user-events-bq-sub"
+```
+
+### Project Configuration
+
+```bash
+# Set active project
+gcloud config set project $PROJECT_ID
+gcloud config get-value project
+```
+
+### 1. Artifact Registry
+
+```bash
+# Create repository
+gcloud artifacts repositories create $REPOSITORY \
+  --repository-format=docker \
+  --location=$REGION
+
+# Verify
+gcloud artifacts repositories list
+
+# Configure Docker authentication
+gcloud auth configure-docker $REGION-docker.pkg.dev
+```
+
+### 2. Cloud SQL (PostgreSQL)
+
+```bash
+# Create instance
+gcloud sql instances create $SQL_INSTANCE \
+  --database-version=POSTGRES_17 \
+  --edition=ENTERPRISE \
+  --tier=db-f1-micro \
+  --region=$REGION
+
+# Create user
+gcloud sql users create movieapp \
+  --instance=$SQL_INSTANCE \
+  --password=MovieMatch1234
+
+# Create database
+gcloud sql databases create movie_match \
+  --instance=$SQL_INSTANCE
+```
+
+**Connection String:**
+```
+postgresql+psycopg://movieapp:MovieMatch1234@/movie_match?host=/cloudsql/$PROJECT_ID:$REGION:$SQL_INSTANCE
+```
+
+### 3. VPC Network
+
+```bash
+# Create VPC
+gcloud compute networks create $VPC_NAME \
+  --subnet-mode=custom
+
+# Create subnet
+gcloud compute networks subnets create $SUBNET_NAME \
+  --network=$VPC_NAME \
+  --region=$REGION \
+  --range=$SUBNET_RANGE
+```
+
+### 4. Redis (Cloud Memorystore)
+
+```bash
+gcloud redis instances create $REDIS_INSTANCE \
+  --size=1 \
+  --region=$REGION \
+  --network=$VPC_NAME
+```
+
+### 5. Pub/Sub and BigQuery
+
+Enable services:
+```bash
 gcloud services enable pubsub.googleapis.com bigquery.googleapis.com
+```
 
-
-# Create a BigQuery Dataset and Table
-bq mk --location=europe-west9 --dataset movie_app_analytics
+Create BigQuery dataset and table:
+```bash
+bq mk --location=$REGION --dataset $DATASET
 
 bq mk --table \
-  movie-match-d665d:movie_app_analytics.user_events \
+  $PROJECT_ID:$DATASET.$TABLE \
   event_type:STRING,session_id:STRING,movie_id:INTEGER,created_at:TIMESTAMP,metadata:JSON,attributes:JSON,message_id:STRING,publish_time:TIMESTAMP,subscription_name:STRING
+```
 
-# Test Pub/Sub
-gcloud pubsub topics publish user-events-topic \
-  --message='{"event_type":"movie_favourites","session_id":"123","movie_id":456,"created_at":"2026-09-20T19:00:00+00:00","metadata":{}}'
+Create Pub/Sub topic and subscription:
+```bash
+# Create topic
+gcloud pubsub topics create $TOPIC
 
-
-bq query --use_legacy_sql=false \
-'SELECT *
- FROM `movie-match-d665d.movie_app_analytics.user_events`
- ORDER BY publish_time DESC
- LIMIT 10'
-
-# Configure pub/sub perm
+# Create Pub/Sub service account
 gcloud beta services identity create \
   --service=pubsub.googleapis.com \
-  --project=movie-match-d665d
+  --project=$PROJECT_ID
 
-gcloud projects add-iam-policy-binding movie-match-d665d \
-  --member="serviceAccount:service-690419851764@gcp-sa-pubsub.iam.gserviceaccount.com" \
+# Get the service account email (it will be displayed in the output above)
+# Format: service-{PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com
+# Get project number
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+
+# Grant BigQuery permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
   --role="roles/bigquery.dataEditor"
 
-# Create pub/sub Topics + Subscription
-gcloud pubsub topics create user-events-topic
+# Create subscription with BigQuery integration
+gcloud pubsub subscriptions create $SUBSCRIPTION \
+  --topic=$TOPIC \
+  --bigquery-table=$PROJECT_ID:$DATASET.$TABLE \
+  --write-metadata \
+  --use-table-schema
+```
 
-gcloud pubsub subscriptions create user-events-bq-sub \
-    --topic=user-events-topic \
-    --bigquery-table=movie-match-d665d:movie_app_analytics.user_events \
-    --write-metadata \
-    --use-table-schema
+Test Pub/Sub:
+```bash
+gcloud pubsub topics publish $TOPIC \
+  --message='{"event_type":"movie_favourites","session_id":"123","movie_id":456,"created_at":"2026-09-20T19:00:00+00:00","metadata":{}}'
 
-# Create Cloud run for frontend
+# Query BigQuery
+bq query --use_legacy_sql=false \
+  "SELECT * FROM \`$PROJECT_ID.$DATASET.$TABLE\` ORDER BY publish_time DESC LIMIT 10"
+```
+
+### 6. Build and Push Docker Images
+
+**Backend:**
+```bash
+docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-backend:latest backend/
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-backend:latest
+```
+
+**Frontend:**
+```bash
+docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-frontend:latest frontend/
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-frontend:latest
+```
+
+Verify images:
+```bash
+gcloud artifacts docker images list \
+  $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY
+```
+
+### 7. Deploy to Cloud Run
+
+**Backend:**
+```bash
+gcloud run deploy movie-backend \
+  --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-backend:latest \
+  --region $REGION \
+  --env-vars-file backend/env.prod.yaml \
+  --allow-unauthenticated \
+  --network=$VPC_NAME \
+  --subnet=$SUBNET_NAME \
+  --vpc-egress=private-ranges-only \
+  --add-cloudsql-instances=$PROJECT_ID:$REGION:$SQL_INSTANCE
+```
+
+Grant Cloud SQL permissions:
+```bash
+# Get the default compute service account
+export COMPUTE_SA="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$COMPUTE_SA" \
+  --role="roles/cloudsql.client"
+```
+
+**Frontend:**
+```bash
 gcloud run deploy movie-frontend \
-  --image europe-west9-docker.pkg.dev/movie-match-d665d/movie-app/movie-frontend:latest \
-  --region europe-west9 \
+  --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/movie-frontend:latest \
+  --region $REGION \
   --env-vars-file frontend/env.prod.yaml \
   --allow-unauthenticated
+```
 
+### 8. Verify Deployment
 
-# Verify Service Account attached to Cloud run service
+Check service account:
+```bash
 gcloud run services describe movie-backend \
-  --region=europe-west9 \
+  --region=$REGION \
   --format="value(spec.template.spec.serviceAccountName)"
+```
 
-gcloud projects get-iam-policy movie-match-d665d \
+Check IAM permissions:
+```bash
+gcloud projects get-iam-policy $PROJECT_ID \
   --flatten="bindings[].members" \
-  --filter="bindings.members:690419851764-compute@developer.gserviceaccount.com" \
+  --filter="bindings.members:$COMPUTE_SA" \
   --format="table(bindings.role,bindings.members)"
+```
+
+Get service URLs:
+```bash
+# Backend URL
+gcloud run services describe movie-backend \
+  --region=$REGION \
+  --format="value(status.url)"
+
+# Frontend URL
+gcloud run services describe movie-frontend \
+  --region=$REGION \
+  --format="value(status.url)"
+```
+
+## CI/CD Pipeline
+
+GitHub Actions workflows automatically build and push Docker images to Artifact Registry on manual trigger.
+
+**Required GitHub Secrets:**
+- `GAR_JSON_KEY`: Google Cloud Service account JSON key that has Cloud Artifact Registry (GAR) write access.
+
+**Required GitHub Variables:**
+- `GCP_LOCATION`: europe-west9 (you can change it!)
+- `GCP_PROJECT_ID`: your-project-id
+- `NEXT_PUBLIC_API_URL`: Cloud Run public endpoint.
+- `SERVER_API_URL`: Cloud Run public endpoint.
+
+**Workflows:**
+- `.github/workflows/backend.yml`: Backend deployment
+- `.github/workflows/frontend.yml`: Frontend deployment
+
+Trigger manually from GitHub Actions tab or enable automatic deployment by uncommenting push/PR triggers.
+
+## Project Structure
+
+```
+.
+├── backend/
+│   ├── app/
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── repositories/    # Data access layer
+│   │   ├── routes/          # API endpoints
+│   │   ├── services/        # Business logic
+│   │   ├── config.py
+│   │   └── extensions.py
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── run.py
+├── frontend/
+│   ├── app/
+│   │   ├── favorites/       # Favorites page
+│   │   ├── movie/[id]/      # Movie details page
+│   │   ├── search/          # Search page
+│   │   └── page.tsx         # Home page
+│   ├── Dockerfile
+│   └── package.json
+├── .github/workflows/
+│   ├── backend.yml
+│   └── frontend.yml
+└── docker-compose.dev.yaml
+```
+
+## API Endpoints
+
+### Health
+- `GET /health` - Health check
+
+### Movies
+- `GET /api/movies/search?query={query}` - Search movies
+- `GET /api/movies/{id}` - Get movie details
+- `GET /api/movies/popular` - Get popular movies
+- `GET /api/movies/{id}/recommendations` - Get movie recommendations
+
+### Favorites
+- `GET /api/favorites` - Get user favorites
+- `POST /api/favorites` - Add to favorites
+- `DELETE /api/favorites/{movie_id}` - Remove from favorites
+
+## Event Types
+
+User events are published to Pub/Sub and stored in BigQuery:
+
+- `movie_searched`: User searches for movies
+- `movie_viewed`: User views movie details
+- `movie_favourites`: User adds/removes favorites
+
+Event schema:
+```json
+{
+  "event_type": "string",
+  "session_id": "string",
+  "movie_id": "integer",
+  "created_at": "timestamp",
+  "metadata": "json"
+}
+```

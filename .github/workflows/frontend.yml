@@ -13,7 +13,8 @@ defaults:
     working-directory: ./frontend  # Set the working directory to the frontend folder for all steps
 
 env:
-  PROJECT_ID: movie-match-d665d
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_LOCATION: ${{ vars.GCP_LOCATION }}
   REPOSITORY: movie-app
   IMAGE_NAME: movie-frontend
 
@@ -55,7 +56,7 @@ jobs:
       - name: Log in to Google Artifact Registry
         uses: docker/login-action@v4
         with:
-          registry: ${{ vars.GAR_LOCATION }}-docker.pkg.dev
+          registry: ${{ env.GCP_LOCATION }}-docker.pkg.dev
           username: _json_key
           password: ${{ secrets.GAR_JSON_KEY }}
 
@@ -68,7 +69,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ vars.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.GCP_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=v1.1-
@@ -82,6 +83,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            SERVER_API_URL=${{ vars.SERVER_API_URL }}
           # Use GitHub Actions cache to speed up future builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
