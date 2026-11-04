@@ -8,13 +8,6 @@ import type {
   RawMovieDetails,
   SearchResponse,
 } from "@/types/movie";
-
-// export const API_BASE = "http://backend:8081";
-
-// export const API_BASE =
-//   typeof window === "undefined"
-//     ? process.env.SERVER_API_URL ?? "http://backend:8081"
-//     : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
   
 export const API_BASE =
   typeof window === "undefined"
@@ -30,7 +23,6 @@ class ApiError extends Error {
     this.status = status;
   }
 }
-
 
 function mapMovie(api: RawMovie): Movie {
   return {
