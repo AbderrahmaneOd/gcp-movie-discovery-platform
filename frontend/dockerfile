@@ -35,9 +35,6 @@ FROM node:${NODE_VERSION} AS builder
 # Set build-time environment variable for API URL
 ARG NEXT_PUBLIC_API_URL
 
-ARG SERVER_API_URL
-ENV SERVER_API_URL=$SERVER_API_URL
-
 # Set working directory
 WORKDIR /app
 

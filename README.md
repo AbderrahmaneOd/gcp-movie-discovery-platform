@@ -4,6 +4,8 @@ A movie discovery and recommendation platform built with Flask and Next.js, depl
 
 ## Architecture
 
+![Application Architecture](images/GCP_Project_Architecture.png)
+
 ### Backend
 - **Framework**: Flask (Python 3.13)
 - **Database**: PostgreSQL 17
@@ -24,6 +26,10 @@ A movie discovery and recommendation platform built with Flask and Next.js, depl
 - **Cache**: Cloud Memorystore (Redis)
 - **Networking**: VPC with custom subnet
 - **CI/CD**: GitHub Actions
+
+
+### GitHub Action Workflow
+![CI/CD Pipeline](images/GitHub_workflow.png)
 
 ## Local Development
 
@@ -236,6 +242,9 @@ gcloud redis instances create $REDIS_INSTANCE \
 ```
 
 ### 5. Pub/Sub and BigQuery
+This is all the components we are trying to create to set up events analysis:
+![Pub/Sub and BigQuery Events Analysis](images/Events_Analysis.png)
+
 
 Enable services:
 ```bash
@@ -332,6 +341,10 @@ export COMPUTE_SA="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$COMPUTE_SA" \
   --role="roles/cloudsql.client"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$COMPUTE_SA" \
+  --role="roles/pubsub.publisher"  
 ```
 
 **Frontend:**

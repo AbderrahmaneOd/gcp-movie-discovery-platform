@@ -19,33 +19,33 @@ env:
   IMAGE_NAME: movie-frontend
 
 jobs:
-  # test:
-  #   runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   # Step 1: Fetch code from your repository
-  #   - name: Checkout repository
-  #     uses: actions/checkout@v7
+    steps:
+    # Step 1: Fetch code from your repository
+    - name: Checkout repository
+      uses: actions/checkout@v7
 
-  #   # Step 2: Set up Node.js environment
-  #   - name: Setup Node.js
-  #     uses: actions/setup-node@v7
-  #     with:
-  #       node-version: 24
-  #       cache: 'npm'       # Automatically caches global npm dependencies
-  #       cache-dependency-path: frontend/package-lock.json  # Cache based on package-lock.json
+    # Step 2: Set up Node.js environment
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: 'npm'       # Automatically caches global npm dependencies
+        cache-dependency-path: frontend/package-lock.json  # Cache based on package-lock.json
 
-  #   # Step 3: Install clean dependencies
-  #   - name: Install Dependencies
-  #     run: npm ci
+    # Step 3: Install clean dependencies
+    - name: Install Dependencies
+      run: npm ci
 
-  #   # Step 4: Build the application
-  #   - name: Build Project
-  #     run: npm run build
+    # Step 4: Build the application
+    - name: Build Project
+      run: npm run build
 
 
   build-and-deploy:
-    # needs: test
+    needs: test
     runs-on: ubuntu-latest
     
     steps:
@@ -85,7 +85,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
-            SERVER_API_URL=${{ vars.SERVER_API_URL }}
           # Use GitHub Actions cache to speed up future builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
