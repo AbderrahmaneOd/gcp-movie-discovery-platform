@@ -32,7 +32,9 @@ services:
 
 
   backend:
-    image: movie-match:backend-v1.1
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: backend
     restart: unless-stopped
     ports:
